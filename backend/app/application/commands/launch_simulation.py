@@ -1,0 +1,1 @@
+"""LaunchSimulation command handler."""

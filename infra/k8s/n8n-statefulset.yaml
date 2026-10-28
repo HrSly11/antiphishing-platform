@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: antiphishing-n8n
+  namespace: antiphishing-soc
+spec:
+  serviceName: antiphishing-n8n
+  replicas: 1
+  selector:
+    matchLabels:
+      app: antiphishing-n8n
+  template:
+    metadata:
+      labels:
+        app: antiphishing-n8n
+    spec:
+      containers:
+        - name: n8n
+          image: n8nio/n8n:1.68.0
+          ports:
+            - containerPort: 5678
+          envFrom:
+            - secretRef:
+                name: antiphishing-n8n-secrets
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          volumeMounts:
+            - name: n8ndata
+              mountPath: /home/node/.n8n
+  volumeClaimTemplates:
+    - metadata:
+        name: n8ndata
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: antiphishing-n8n
+  namespace: antiphishing-soc
+spec:
+  selector:
+    app: antiphishing-n8n
+  ports:
+    - port: 5678
+      targetPort: 5678

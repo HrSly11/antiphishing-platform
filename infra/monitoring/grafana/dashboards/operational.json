@@ -1,0 +1,41 @@
+{
+  "uid": "bancocentral-soc-ops",
+  "title": "BancoCentral Antiphishing — Operational Telemetry",
+  "schemaVersion": 39,
+  "timezone": "utc",
+  "refresh": "15s",
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "HTTP Requests / min",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "targets": [{ "expr": "sum(rate(antiphish_http_requests_total[1m])) * 60" }]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Inline Detection Latency p95 (seconds)",
+      "gridPos": { "h": 8, "w": 12, "x": 6, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(antiphish_analysis_latency_seconds_bucket[5m])) by (le))"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Pending n8n Outbox Events",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+      "targets": [{ "expr": "antiphish_outbox_pending" }]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "LLM Calls by Engine (Ollama vs Deterministic Fallback)",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "targets": [{ "expr": "sum by (engine) (rate(antiphish_llm_calls_total[5m]))" }]
+    }
+  ]
+}

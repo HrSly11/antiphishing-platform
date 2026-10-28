@@ -1,0 +1,1 @@
+"""Get verdict query handler."""

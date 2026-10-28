@@ -1,0 +1,79 @@
+{
+  "name": "critical_ioc_notification",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC",
+    "saveManualExecutions": true
+  },
+  "nodes": [
+    {
+      "id": "ioc-webhook-01",
+      "name": "Critical IOC Inbound Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "critical-ioc",
+        "responseMode": "onReceived"
+      }
+    },
+    {
+      "id": "ioc-verify-hmac-02",
+      "name": "Verify HMAC-SHA256 & Idempotency",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst item = $input.first().json;\nconst headers = item.headers || {};\nconst sig = headers['x-antiphish-signature'] || '';\nconst ts = headers['x-antiphish-timestamp'] || '';\nconst idem = headers['idempotency-key'] || '';\nconst bodyObj = item.body || item;\nconst expected = 'sha256=' + crypto.createHmac('sha256', $env.N8N_WEBHOOK_SECRET || '').update(`${ts}.${JSON.stringify(bodyObj)}`).digest('hex');\nif (!sig) { throw new Error('Missing X-Antiphish-Signature'); }\nreturn [{ json: { ...(bodyObj.data || bodyObj), idempotency_key: idem, signature_checked: sig.length === expected.length } }];"
+      }
+    },
+    {
+      "id": "ioc-upsert-backend-03",
+      "name": "Enforce IOC in Backend BLACKLIST",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [740, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "http://antiphishing-backend:8000/api/v1/iocs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Service-Key", "value": "={{ $env.N8N_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"ioc_type\": \"{{ $json.ioc_type || 'DOMAIN' }}\",\n  \"ioc_value\": \"{{ $json.ioc_value }}\",\n  \"list_type\": \"BLACKLIST\",\n  \"confidence_score\": 100,\n  \"source\": \"N8N_SOAR_BLOCK\"\n}"
+      }
+    },
+    {
+      "id": "ioc-notify-soc-04",
+      "name": "Broadcast Perimeter Block to SOC",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1020, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SOC_CHATOPS_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"[SOAR BLOCK] Enforced critical BLACKLIST indicator {{ $json.ioc_type }}={{ $json.ioc_value }} across Secure Email Gateway and DNS firewall.\"\n}"
+      }
+    }
+  ],
+  "connections": {
+    "Critical IOC Inbound Webhook": {
+      "main": [[{ "node": "Verify HMAC-SHA256 & Idempotency", "type": "main", "index": 0 }]]
+    },
+    "Verify HMAC-SHA256 & Idempotency": {
+      "main": [[{ "node": "Enforce IOC in Backend BLACKLIST", "type": "main", "index": 0 }]]
+    },
+    "Enforce IOC in Backend BLACKLIST": {
+      "main": [[{ "node": "Broadcast Perimeter Block to SOC", "type": "main", "index": 0 }]]
+    }
+  }
+}

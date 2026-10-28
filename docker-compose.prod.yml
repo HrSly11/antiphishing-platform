@@ -1,0 +1,42 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=production
+      - WORKERS_ENABLED=false
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "1.50"
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  sla-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    env_file:
+      - .env
+    command: ["python", "-m", "app.workers.sla_worker"]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "443:443"
+      - "80:80"
+    depends_on:
+      - backend

@@ -1,0 +1,1 @@
+"""Verdict, Indicator, AnalysisJob entities."""

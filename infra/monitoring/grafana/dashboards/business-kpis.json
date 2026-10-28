@@ -1,0 +1,30 @@
+{
+  "uid": "bancocentral-soc-business",
+  "title": "BancoCentral Antiphishing — Executive & SOC KPIs",
+  "schemaVersion": 39,
+  "timezone": "utc",
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "type": "piechart",
+      "title": "Analyzed Messages by Verdict",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "targets": [{ "expr": "sum by (verdict) (antiphish_analyses_total)" }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Open SOC Phishing Incidents",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "targets": [{ "expr": "antiphish_incidents_open" }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "SLA Escalated Incidents (Total)",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "targets": [{ "expr": "antiphish_incidents_escalated_total" }]
+    }
+  ]
+}

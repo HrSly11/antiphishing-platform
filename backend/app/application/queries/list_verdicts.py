@@ -1,0 +1,1 @@
+"""List verdicts query handler."""

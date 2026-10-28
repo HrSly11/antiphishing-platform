@@ -1,0 +1,22 @@
+name: Deploy Staging (Kubernetes)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Kubernetes manifests
+        run: |
+          python -c "import pathlib, yaml; [list(yaml.safe_load_all(p.read_text())) for p in pathlib.Path('infra/k8s').glob('*.yaml')]; print('K8s YAML manifests valid')"
+
+      - name: Build Docker images
+        run: |
+          docker build -t antiphishing-backend:${{ github.sha }} ./backend
+          docker build -t antiphishing-frontend:${{ github.sha }} ./frontend

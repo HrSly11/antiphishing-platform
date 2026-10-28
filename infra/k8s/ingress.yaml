@@ -1,0 +1,32 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: antiphishing-ingress
+  namespace: antiphishing-soc
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "25m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - soc-antiphishing.bancocentral.internal
+      secretName: bancocentral-soc-tls
+  rules:
+    - host: soc-antiphishing.bancocentral.internal
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: antiphishing-backend
+                port:
+                  number: 8000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: antiphishing-frontend
+                port:
+                  number: 80

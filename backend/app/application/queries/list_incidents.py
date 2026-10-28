@@ -1,0 +1,1 @@
+"""List incidents query handler."""

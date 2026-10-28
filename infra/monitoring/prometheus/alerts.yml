@@ -1,0 +1,38 @@
+groups:
+  - name: antiphishing_soc_alerts
+    rules:
+      - alert: HighInlineDetectionLatencyP95
+        expr: histogram_quantile(0.95, sum(rate(antiphish_analysis_latency_seconds_bucket[5m])) by (le)) > 0.35
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MTA inline inspection p95 latency exceeded 350ms"
+          description: "Inspect Ollama health check and network enrichment timeouts."
+
+      - alert: CriticalPhishingWaveDetected
+        expr: sum(rate(antiphish_analyses_total{verdict="MALICIOUS"}[5m])) * 60 > 15
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Active phishing wave (>15 quarantined messages/min)"
+          description: "Engage SOC L2 incident response playbook SOP-SOC-IR-001."
+
+      - alert: SlaEscalationsFiring
+        expr: increase(antiphish_incidents_escalated_total[15m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "SOC incident breached response SLA"
+          description: "One or more open phishing incidents exceeded SLA deadline."
+
+      - alert: OutboxBacklogGrowing
+        expr: antiphish_outbox_pending > 25
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pending n8n outbox webhook backlog > 25"
+          description: "Verify n8n SOAR connectivity and HMAC webhook endpoint."

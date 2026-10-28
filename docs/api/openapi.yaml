@@ -1,0 +1,3396 @@
+openapi: 3.1.0
+info:
+  title: Antiphishing Platform
+  description: Enterprise Banking Antiphishing Platform — Hexagonal Architecture,
+    Selective CQRS, LangChain/Ollama On-Premise AI, n8n SOAR Integration, and Tamper-Evident
+    Audit Trail.
+  version: 2.0.0
+paths:
+  /health:
+    get:
+      tags:
+      - Health
+      summary: Health Check
+      description: Kubernetes / Docker liveness probe.
+      operationId: health_check_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /ready:
+    get:
+      tags:
+      - Health
+      summary: Readiness Check
+      description: Readiness probe verifying live PostgreSQL connectivity.
+      operationId: readiness_check_ready_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /metrics:
+    get:
+      tags:
+      - Health
+      summary: Prometheus Metrics
+      description: Prometheus scrape endpoint exposing operational and detection metrics.
+      operationId: prometheus_metrics_metrics_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/health:
+    get:
+      tags:
+      - Health
+      summary: Health Check
+      description: Kubernetes / Docker liveness probe.
+      operationId: health_check_api_v1_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/ready:
+    get:
+      tags:
+      - Health
+      summary: Readiness Check
+      description: Readiness probe verifying live PostgreSQL connectivity.
+      operationId: readiness_check_api_v1_ready_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/metrics:
+    get:
+      tags:
+      - Health
+      summary: Prometheus Metrics
+      description: Prometheus scrape endpoint exposing operational and detection metrics.
+      operationId: prometheus_metrics_api_v1_metrics_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/auth/login:
+    post:
+      tags:
+      - Auth
+      summary: Login
+      description: Authenticate SOC user with Argon2id + account lockout + optional
+        RFC 6238 TOTP MFA.
+      operationId: login_api_v1_auth_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/refresh:
+    post:
+      tags:
+      - Auth
+      summary: Refresh Tokens
+      description: Validate refresh JWT and issue rotated access & refresh tokens.
+      operationId: refresh_tokens_api_v1_auth_refresh_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/me:
+    get:
+      tags:
+      - Auth
+      summary: Get Me
+      description: Return current authenticated user profile and RBAC permissions.
+      operationId: get_me_api_v1_auth_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/auth/logout:
+    post:
+      tags:
+      - Auth
+      summary: Logout
+      description: Record explicit session logout in the append-only audit trail.
+      operationId: logout_api_v1_auth_logout_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/auth/mfa/setup:
+    post:
+      tags:
+      - Auth
+      summary: Setup Mfa
+      description: Generate a new RFC 6238 TOTP secret and provisioning URI for authenticator
+        enrollment.
+      operationId: setup_mfa_api_v1_auth_mfa_setup_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/auth/mfa/enable:
+    post:
+      tags:
+      - Auth
+      summary: Enable Mfa
+      description: Verify a live TOTP code and enforce MFA on subsequent logins.
+      operationId: enable_mfa_api_v1_auth_mfa_enable_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaVerifyRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/auth/mfa/disable:
+    post:
+      tags:
+      - Auth
+      summary: Disable Mfa
+      description: Disable TOTP MFA for the current user after optional code or password
+        confirmation.
+      operationId: disable_mfa_api_v1_auth_mfa_disable_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaDisableRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/auth/sso/providers:
+    get:
+      tags:
+      - Auth
+      summary: List Sso Providers
+      description: Return enterprise identity federation readiness (Local Argon2id,
+        SAML 2.0/OIDC, LDAPS).
+      operationId: list_sso_providers_api_v1_auth_sso_providers_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/users:
+    get:
+      tags:
+      - Users
+      summary: List Users
+      description: List all SOC platform users with lockout and MFA posture.
+      operationId: list_users_api_v1_users_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/UserOut'
+                type: array
+                title: Response List Users Api V1 Users Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+    post:
+      tags:
+      - Users
+      summary: Create User
+      description: Create a new user enforcing PCI-DSS 8.3 password complexity and
+        Argon2id hashing.
+      operationId: create_user_api_v1_users_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/users/roles:
+    get:
+      tags:
+      - Users
+      summary: Get Rbac Matrix
+      description: Return the role-to-permissions RBAC matrix.
+      operationId: get_rbac_matrix_api_v1_users_roles_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/users/{user_id}:
+    patch:
+      tags:
+      - Users
+      summary: Update User
+      description: Update user role, active status, unlock account, or rotate password.
+      operationId: update_user_api_v1_users__user_id__patch
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: User Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/detection/analyze-email:
+    post:
+      tags:
+      - Detection
+      summary: Analyze Email Endpoint
+      description: Inline email inspection invoked by the corporate MTA gateway, n8n
+        SOAR, or SOC analysts.
+      operationId: analyze_email_endpoint_api_v1_detection_analyze_email_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: X-Gateway-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Gateway-Key
+      - name: X-Service-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailAnalysisRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailAnalysisResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/detection/analyze-eml:
+    post:
+      tags:
+      - Detection
+      summary: Analyze Eml Endpoint
+      description: 'Parse an RFC 822 `.eml` file upload or JSON `{"raw_eml": "..."}`
+        and run inline detection.'
+      operationId: analyze_eml_endpoint_api_v1_detection_analyze_eml_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: X-Gateway-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Gateway-Key
+      - name: X-Service-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailAnalysisResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+          application/json:
+            schema:
+              type: object
+              properties:
+                raw_eml:
+                  type: string
+              required:
+              - raw_eml
+  /api/v1/detection/analyze-url:
+    post:
+      tags:
+      - Detection
+      summary: Analyze Url Endpoint
+      description: Inspect a standalone URL, SMS smishing link, or decoded QR quishing
+        target.
+      operationId: analyze_url_endpoint_api_v1_detection_analyze_url_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: X-Gateway-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Gateway-Key
+      - name: X-Service-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UrlAnalysisRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailAnalysisResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/detection/report-phishing:
+    post:
+      tags:
+      - Detection
+      summary: Report Phishing Endpoint
+      description: Employee 'Reportar phishing' button intake; auto-triages incidents
+        when risk_score >= 35.
+      operationId: report_phishing_endpoint_api_v1_detection_report_phishing_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: X-Gateway-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Gateway-Key
+      - name: X-Service-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmployeePhishingReportRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailAnalysisResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/detection/verdicts:
+    get:
+      tags:
+      - Detection
+      summary: List Verdicts
+      description: Paginated list of persisted detection verdicts with multi-criteria
+        filtering.
+      operationId: list_verdicts_api_v1_detection_verdicts_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 25
+          title: Page Size
+      - name: verdict
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Verdict
+      - name: channel
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Channel
+      - name: analyst_label
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Analyst Label
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: date_from
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Date From
+      - name: date_to
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Date To
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerdictPage'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/detection/verdicts/{verdict_id}:
+    get:
+      tags:
+      - Detection
+      summary: Get Verdict Detail
+      description: Return full forensic detail for a single detection verdict.
+      operationId: get_verdict_detail_api_v1_detection_verdicts__verdict_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: verdict_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Verdict Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerdictOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/detection/verdicts/{verdict_id}/label:
+    patch:
+      tags:
+      - Detection
+      summary: Label Verdict
+      description: Set analyst feedback label (`TRUE_POSITIVE` | `FALSE_POSITIVE`
+        | `UNREVIEWED`).
+      operationId: label_verdict_api_v1_detection_verdicts__verdict_id__label_patch
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: verdict_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Verdict Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LabelRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerdictOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/dashboard/kpis:
+    get:
+      tags:
+      - Dashboard
+      summary: Get Dashboard Kpis
+      description: Compute real-time analytical SOC KPIs, confusion rates, latencies,
+        trends, and SLA compliance.
+      operationId: get_dashboard_kpis_api_v1_dashboard_kpis_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: window_days
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 365
+          minimum: 1
+          default: 30
+          title: Window Days
+      - name: X-Service-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Dashboard Kpis Api V1 Dashboard Kpis Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/incidents:
+    get:
+      tags:
+      - Incidents
+      summary: List Incidents
+      description: Paginated list of SOC phishing incidents with status, severity,
+        and SLA breach filters.
+      operationId: list_incidents_api_v1_incidents_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 25
+          title: Page Size
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+      - name: severity
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Severity
+      - name: overdue_only
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Overdue Only
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentPage'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - Incidents
+      summary: Create Incident
+      description: Create a manual SOC incident and record immutable creation audit
+        trail.
+      operationId: create_incident_api_v1_incidents_post
+      security:
+      - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManualIncidentCreateRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Create Incident Api V1 Incidents Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/incidents/escalate-overdue:
+    post:
+      tags:
+      - Incidents
+      summary: Escalate Overdue Incidents
+      description: Sweep open incidents past their SLA deadline, escalate them, and
+        queue n8n alerts.
+      operationId: escalate_overdue_incidents_api_v1_incidents_escalate_overdue_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: X-Service-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Escalate Overdue Incidents Api V1 Incidents Escalate
+                  Overdue Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/incidents/{incident_id}:
+    get:
+      tags:
+      - Incidents
+      summary: Get Incident Detail
+      description: Return full incident details, immutable timeline events, linked
+        IOCs, and SLA status.
+      operationId: get_incident_detail_api_v1_incidents__incident_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: incident_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Incident Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Incident Detail Api V1 Incidents  Incident Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/incidents/{incident_id}/transition:
+    post:
+      tags:
+      - Incidents
+      summary: Transition Incident
+      description: Transition incident state (`OPEN -> TRIAGED -> INVESTIGATING ->
+        CONTAINED -> CLOSED`).
+      operationId: transition_incident_api_v1_incidents__incident_id__transition_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: incident_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Incident Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentTransitionPayload'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Transition Incident Api V1 Incidents  Incident Id  Transition
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/incidents/{incident_id}/assign:
+    post:
+      tags:
+      - Incidents
+      summary: Assign Incident
+      description: Assign or reassign an incident to a SOC analyst.
+      operationId: assign_incident_api_v1_incidents__incident_id__assign_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: incident_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Incident Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentAssignPayload'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Assign Incident Api V1 Incidents  Incident Id  Assign
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/incidents/{incident_id}/notes:
+    post:
+      tags:
+      - Incidents
+      summary: Add Incident Note
+      description: Append an immutable investigation note to the incident timeline.
+      operationId: add_incident_note_api_v1_incidents__incident_id__notes_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: incident_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Incident Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NoteRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Add Incident Note Api V1 Incidents  Incident Id  Notes
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/incidents/{incident_id}/summarize:
+    post:
+      tags:
+      - Incidents
+      summary: Summarize Incident Endpoint
+      description: Generate a CISO/SOC executive briefing using the LangChain incident
+        summarizer.
+      operationId: summarize_incident_endpoint_api_v1_incidents__incident_id__summarize_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: incident_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Incident Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Summarize Incident Endpoint Api V1 Incidents  Incident
+                  Id  Summarize Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/iocs:
+    get:
+      tags:
+      - IOCs
+      summary: List Iocs
+      description: Paginated list of BLACKLIST and WHITELIST indicators of compromise.
+      operationId: list_iocs_api_v1_iocs_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 500
+          minimum: 1
+          default: 50
+          title: Page Size
+      - name: list_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: List Type
+      - name: ioc_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Ioc Type
+      - name: active_only
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+          title: Active Only
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Iocs Api V1 Iocs Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - IOCs
+      summary: Create Or Upsert Ioc
+      description: Create or upsert a BLACKLIST or WHITELIST IOC entry with optional
+        TTL and n8n alert.
+      operationId: create_or_upsert_ioc_api_v1_iocs_post
+      security:
+      - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IocUpsertRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Create Or Upsert Ioc Api V1 Iocs Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/iocs/search:
+    get:
+      tags:
+      - IOCs
+      summary: Search Iocs
+      description: Fuzzy trigram (`pg_trgm`) IOC search for homographs, typosquats,
+        and partial domains.
+      operationId: search_iocs_api_v1_iocs_search_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: q
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 2
+          title: Q
+      - name: threshold
+        in: query
+        required: false
+        schema:
+          type: number
+          maximum: 1.0
+          minimum: 0.05
+          default: 0.25
+          title: Threshold
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Limit
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Search Iocs Api V1 Iocs Search Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/iocs/{ioc_id}:
+    delete:
+      tags:
+      - IOCs
+      summary: Deactivate Ioc
+      description: Deactivate an IOC entry while preserving forensic audit history.
+      operationId: deactivate_ioc_api_v1_iocs__ioc_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: ioc_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Ioc Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Deactivate Ioc Api V1 Iocs  Ioc Id  Delete
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reports/export/{fmt}:
+    get:
+      tags:
+      - Reports
+      summary: Export Report
+      description: Stream a freshly rendered PDF, DOCX, or XLSX report directly from
+        live PostgreSQL telemetry.
+      operationId: export_report_api_v1_reports_export__fmt__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: fmt
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^(pdf|docx|xlsx)$
+          title: Fmt
+      - name: template
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: ^(executive|management|operational|compliance)$
+          default: executive
+          title: Template
+      - name: window_days
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 365
+          minimum: 1
+          default: 30
+          title: Window Days
+      - name: date_from
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Date From
+      - name: date_to
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Date To
+      - name: verdict
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Verdict
+      - name: channel
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Channel
+      - name: recipient_email
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Recipient Email
+      - name: X-Service-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reports/generate:
+    post:
+      tags:
+      - Reports
+      summary: Generate Report
+      description: Generate a PDF, DOCX, or XLSX report from JSON criteria (used by
+        SOC UI and n8n daily_report).
+      operationId: generate_report_api_v1_reports_generate_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: X-Service-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateReportPayload'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reports/schedules:
+    get:
+      tags:
+      - Reports
+      summary: List Schedules
+      description: List configured recurring report schedules.
+      operationId: list_schedules_api_v1_reports_schedules_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: X-Service-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScheduleOut'
+                title: Response List Schedules Api V1 Reports Schedules Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - Reports
+      summary: Create Schedule
+      description: Create a recurring DAILY or WEEKLY report schedule.
+      operationId: create_schedule_api_v1_reports_schedules_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: X-Service-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleCreatePayload'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reports/schedules/{schedule_id}:
+    delete:
+      tags:
+      - Reports
+      summary: Delete Schedule
+      description: Deactivate and remove a report schedule.
+      operationId: delete_schedule_api_v1_reports_schedules__schedule_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: schedule_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Schedule Id
+      - name: X-Service-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Delete Schedule Api V1 Reports Schedules  Schedule
+                  Id  Delete
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reports/schedules/run-due:
+    post:
+      tags:
+      - Reports
+      summary: Trigger Due Schedules
+      description: Execute all due report schedules (or all active schedules when
+        `force_all=true`).
+      operationId: trigger_due_schedules_api_v1_reports_schedules_run_due_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: force_all
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Force All
+      - name: X-Service-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Trigger Due Schedules Api V1 Reports Schedules Run
+                  Due Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/dataset/info:
+    get:
+      tags:
+      - Dataset
+      summary: Get Dataset Info
+      description: Return dataset provenance, licensing, schema metadata, and live
+        deduplicated counts.
+      operationId: get_dataset_info_api_v1_dataset_info_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Get Dataset Info Api V1 Dataset Info Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/dataset/versions:
+    get:
+      tags:
+      - Dataset
+      summary: List Dataset Versions
+      description: List immutable dataset ingestion runs with SHA-256 integrity hashes.
+      operationId: list_dataset_versions_api_v1_dataset_versions_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 25
+          title: Limit
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DatasetVersionOut'
+                title: Response List Dataset Versions Api V1 Dataset Versions Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/dataset/samples:
+    get:
+      tags:
+      - Dataset
+      summary: List Dataset Samples
+      description: Paginated list of deduplicated phishing URL samples.
+      operationId: list_dataset_samples_api_v1_dataset_samples_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 25
+          title: Page Size
+      - name: source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Dataset Samples Api V1 Dataset Samples Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/dataset/ingest:
+    post:
+      tags:
+      - Dataset
+      summary: Ingest Dataset
+      description: Trigger idempotent ETL ingestion from OpenPhish or PhishTank (live
+        HTTPS or offline sample).
+      operationId: ingest_dataset_api_v1_dataset_ingest_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: X-Service-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatasetIngestRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Ingest Dataset Api V1 Dataset Ingest Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/simulation/campaigns:
+    get:
+      tags:
+      - Simulation
+      summary: List Campaigns
+      description: List employee phishing awareness simulation campaigns.
+      operationId: list_campaigns_api_v1_simulation_campaigns_get
+      security:
+      - HTTPBearer: []
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Campaigns Api V1 Simulation Campaigns Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - Simulation
+      summary: Create Campaign
+      description: Launch a new phishing awareness simulation campaign.
+      operationId: create_campaign_api_v1_simulation_campaigns_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: X-Service-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampaignCreateRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Create Campaign Api V1 Simulation Campaigns Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/simulation/campaigns/{campaign_id}/events:
+    post:
+      tags:
+      - Simulation
+      summary: Record Campaign Event
+      description: Record an employee simulation event (`SENT`, `OPENED`, `CLICKED`,
+        `REPORTED`) and recompute KPIs.
+      operationId: record_campaign_event_api_v1_simulation_campaigns__campaign_id__events_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: campaign_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Campaign Id
+      - name: X-Service-Key
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Service-Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimulationEventCreateRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Record Campaign Event Api V1 Simulation Campaigns  Campaign
+                  Id  Events Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/simulation/metrics:
+    get:
+      tags:
+      - Simulation
+      summary: Get Simulation Metrics
+      description: Return aggregate human-awareness KPIs across simulation campaigns
+        and employee phishing reports.
+      operationId: get_simulation_metrics_api_v1_simulation_metrics_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Get Simulation Metrics Api V1 Simulation Metrics Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/threat-hunting/search:
+    get:
+      tags:
+      - Threat Hunting
+      summary: Search Threats
+      description: Execute unified trigram similarity threat hunting across verdicts,
+        IOCs, and dataset samples.
+      operationId: search_threats_api_v1_threat_hunting_search_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: q
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 2
+          description: Domain, sender, subject, IP, or lookalike string
+          title: Q
+        description: Domain, sender, subject, IP, or lookalike string
+      - name: channel
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            pattern: ^(EMAIL|SMS|WEB|QR)$
+          - type: 'null'
+          title: Channel
+      - name: verdict
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            pattern: ^(CLEAN|SUSPICIOUS|MALICIOUS)$
+          - type: 'null'
+          title: Verdict
+      - name: min_score
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            maximum: 100
+            minimum: 0
+          - type: 'null'
+          title: Min Score
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 25
+          title: Limit
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Search Threats Api V1 Threat Hunting Search Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/audit/logs:
+    get:
+      tags:
+      - Audit
+      summary: List Audit Logs
+      description: Paginated append-only audit trail (`audit_logs`) with SHA-256 chain
+        hashes.
+      operationId: list_audit_logs_api_v1_audit_logs_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: page_size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 500
+          minimum: 1
+          default: 50
+          title: Page Size
+      - name: action
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Action
+      - name: actor_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filter by actor email
+          title: Actor Id
+        description: Filter by actor email
+      - name: user_email
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: User Email
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Audit Logs Api V1 Audit Logs Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/audit/verify-chain:
+    get:
+      tags:
+      - Audit
+      summary: Verify Audit Chain
+      description: Recompute every SHA-256 hash in `audit_logs` to prove tamper-evident
+        integrity.
+      operationId: verify_audit_chain_api_v1_audit_verify_chain_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Verify Audit Chain Api V1 Audit Verify Chain Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/audit/compliance:
+    get:
+      tags:
+      - Audit
+      summary: Get Compliance Posture
+      description: Return regulatory control mapping (PCI-DSS v4.0, ISO 27001:2022,
+        GDPR) backed by live DB evidence.
+      operationId: get_compliance_posture_api_v1_audit_compliance_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Get Compliance Posture Api V1 Audit Compliance Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/assistant/chat:
+    post:
+      tags:
+      - Assistant
+      summary: Chat With Soc Assistant
+      description: Answer SOC analyst questions grounded on `docs/{runbooks,compliance,architecture}`
+        and live DB KPIs.
+      operationId: chat_with_soc_assistant_api_v1_assistant_chat_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssistantChatRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Chat With Soc Assistant Api V1 Assistant Chat Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/assistant/investigate-url:
+    post:
+      tags:
+      - Assistant
+      summary: Investigate Url Endpoint
+      description: Run the multi-tool LangChain URL threat investigation agent.
+      operationId: investigate_url_endpoint_api_v1_assistant_investigate_url_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UrlInvestigationRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Investigate Url Endpoint Api V1 Assistant Investigate
+                  Url Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/v1/assistant/flows:
+    get:
+      tags:
+      - Assistant
+      summary: Get Langflow Sandboxes
+      description: Return exported LangFlow v1 visual sandbox flows (`email_classifier_sandbox`,
+        `url_agent_sandbox`).
+      operationId: get_langflow_sandboxes_api_v1_assistant_flows_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Get Langflow Sandboxes Api V1 Assistant Flows Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+components:
+  schemas:
+    AssistantChatRequest:
+      properties:
+        question:
+          type: string
+          maxLength: 2000
+          minLength: 2
+          title: Question
+        incident_id:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Incident Id
+        top_k:
+          type: integer
+          maximum: 8.0
+          minimum: 1.0
+          title: Top K
+          default: 4
+      type: object
+      required:
+      - question
+      title: AssistantChatRequest
+    CampaignCreateRequest:
+      properties:
+        name:
+          type: string
+          maxLength: 200
+          minLength: 3
+          title: Name
+        channel:
+          type: string
+          pattern: ^(EMAIL|SMS|QR|WEB)$
+          title: Channel
+          default: EMAIL
+        template_subject:
+          type: string
+          maxLength: 300
+          minLength: 3
+          title: Template Subject
+        lure_type:
+          type: string
+          maxLength: 80
+          title: Lure Type
+          default: CREDENTIAL_HARVEST
+        target_department:
+          type: string
+          maxLength: 120
+          title: Target Department
+          default: All Employees
+        total_targets:
+          type: integer
+          maximum: 100000.0
+          minimum: 1.0
+          title: Total Targets
+          default: 50
+      type: object
+      required:
+      - name
+      - template_subject
+      title: CampaignCreateRequest
+    DatasetIngestRequest:
+      properties:
+        source:
+          type: string
+          title: Source
+          description: 'Feed identifier: openphish_sample | phishtank_sample | openphish_live
+            | phishtank_live | openphish | phishtank'
+          default: openphish_sample
+        prefer_live:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Prefer Live
+        sync_blacklist:
+          type: boolean
+          title: Sync Blacklist
+          default: true
+      type: object
+      title: DatasetIngestRequest
+    DatasetVersionOut:
+      properties:
+        id:
+          type: string
+          title: Id
+        source:
+          type: string
+          title: Source
+        source_url:
+          type: string
+          title: Source Url
+        license:
+          type: string
+          title: License
+        sha256:
+          type: string
+          title: Sha256
+        total_records:
+          type: integer
+          title: Total Records
+        new_records:
+          type: integer
+          title: New Records
+        duplicate_records:
+          type: integer
+          title: Duplicate Records
+        invalid_records:
+          type: integer
+          title: Invalid Records
+        status:
+          type: string
+          title: Status
+        triggered_by:
+          type: string
+          title: Triggered By
+        created_at:
+          type: string
+          title: Created At
+      type: object
+      required:
+      - id
+      - source
+      - source_url
+      - license
+      - sha256
+      - total_records
+      - new_records
+      - duplicate_records
+      - invalid_records
+      - status
+      - triggered_by
+      - created_at
+      title: DatasetVersionOut
+    EmailAnalysisRequest:
+      properties:
+        sender:
+          type: string
+          maxLength: 320
+          minLength: 3
+          title: Sender
+        recipient:
+          type: string
+          maxLength: 320
+          minLength: 3
+          title: Recipient
+          default: soc@bancocentral.com
+        subject:
+          type: string
+          maxLength: 998
+          title: Subject
+          default: (no subject)
+        body_text:
+          type: string
+          maxLength: 200000
+          title: Body Text
+          default: ''
+        body_html:
+          anyOf:
+          - type: string
+            maxLength: 500000
+          - type: 'null'
+          title: Body Html
+        headers:
+          additionalProperties:
+            type: string
+          type: object
+          title: Headers
+        attachments:
+          items:
+            $ref: '#/components/schemas/EmailAttachmentDto'
+          type: array
+          maxItems: 50
+          title: Attachments
+        channel:
+          type: string
+          pattern: ^(EMAIL|SMS|WEB|QR)$
+          title: Channel
+          default: EMAIL
+        reported_by_user:
+          type: boolean
+          title: Reported By User
+          default: false
+      type: object
+      required:
+      - sender
+      title: EmailAnalysisRequest
+      description: Email or multi-channel message as forwarded by the corporate mail
+        gateway (MTA) or SOC.
+    EmailAnalysisResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+          default: ''
+        correlation_id:
+          type: string
+          title: Correlation Id
+        timestamp:
+          type: string
+          title: Timestamp
+        created_at:
+          type: string
+          title: Created At
+          default: ''
+        channel:
+          type: string
+          title: Channel
+          default: EMAIL
+        sender:
+          type: string
+          title: Sender
+        sender_email:
+          type: string
+          title: Sender Email
+          default: ''
+        sender_domain:
+          type: string
+          title: Sender Domain
+          default: ''
+        recipient:
+          type: string
+          title: Recipient
+        subject:
+          type: string
+          title: Subject
+        risk_score:
+          type: integer
+          title: Risk Score
+        severity:
+          type: string
+          title: Severity
+          default: LOW
+        verdict:
+          type: string
+          title: Verdict
+        action:
+          type: string
+          title: Action
+        summary:
+          type: string
+          title: Summary
+        incident_triggered:
+          type: boolean
+          title: Incident Triggered
+        incident_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Incident Id
+        incident_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Incident Code
+        latency_ms:
+          type: integer
+          title: Latency Ms
+          default: 0
+        urls:
+          items:
+            type: string
+          type: array
+          title: Urls
+        attachments:
+          items:
+            $ref: '#/components/schemas/EmailAttachmentDto'
+          type: array
+          title: Attachments
+        llm_classification:
+          additionalProperties: true
+          type: object
+          title: Llm Classification
+        enrichment:
+          additionalProperties: true
+          type: object
+          title: Enrichment
+        signals:
+          items:
+            $ref: '#/components/schemas/SignalDto'
+          type: array
+          title: Signals
+      type: object
+      required:
+      - correlation_id
+      - timestamp
+      - sender
+      - recipient
+      - subject
+      - risk_score
+      - verdict
+      - action
+      - summary
+      - incident_triggered
+      - signals
+      title: EmailAnalysisResponse
+    EmailAttachmentDto:
+      properties:
+        filename:
+          type: string
+          maxLength: 255
+          minLength: 1
+          title: Filename
+        size_bytes:
+          anyOf:
+          - type: integer
+            maximum: 2000000000.0
+            minimum: 0.0
+          - type: 'null'
+          title: Size Bytes
+          default: 0
+        content_type:
+          anyOf:
+          - type: string
+            maxLength: 150
+          - type: 'null'
+          title: Content Type
+      type: object
+      required:
+      - filename
+      title: EmailAttachmentDto
+    EmployeePhishingReportRequest:
+      properties:
+        sender_email:
+          anyOf:
+          - type: string
+            maxLength: 320
+          - type: 'null'
+          title: Sender Email
+        sender:
+          anyOf:
+          - type: string
+            maxLength: 320
+          - type: 'null'
+          title: Sender
+        reported_by_email:
+          anyOf:
+          - type: string
+            maxLength: 320
+          - type: 'null'
+          title: Reported By Email
+        recipient:
+          anyOf:
+          - type: string
+            maxLength: 320
+          - type: 'null'
+          title: Recipient
+        subject:
+          type: string
+          maxLength: 998
+          title: Subject
+          default: Reported Suspicious Email
+        body_text:
+          type: string
+          maxLength: 200000
+          title: Body Text
+          default: ''
+        body_html:
+          anyOf:
+          - type: string
+            maxLength: 500000
+          - type: 'null'
+          title: Body Html
+        headers:
+          additionalProperties:
+            type: string
+          type: object
+          title: Headers
+        channel:
+          type: string
+          pattern: ^(EMAIL|SMS|WEB|QR)$
+          title: Channel
+          default: EMAIL
+      type: object
+      title: EmployeePhishingReportRequest
+    GenerateReportPayload:
+      properties:
+        report_format:
+          type: string
+          pattern: ^(pdf|docx|xlsx)$
+          title: Report Format
+          default: pdf
+        template:
+          type: string
+          pattern: ^(executive|management|operational|compliance)$
+          title: Template
+          default: operational
+        window_days:
+          type: integer
+          maximum: 365.0
+          minimum: 1.0
+          title: Window Days
+          default: 30
+        date_from:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Date From
+        date_to:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Date To
+        verdict:
+          anyOf:
+          - type: string
+            pattern: ^(CLEAN|SUSPICIOUS|MALICIOUS)$
+          - type: 'null'
+          title: Verdict
+        channel:
+          anyOf:
+          - type: string
+            pattern: ^(EMAIL|SMS|WEB|QR)$
+          - type: 'null'
+          title: Channel
+        recipient_email:
+          anyOf:
+          - type: string
+            maxLength: 500
+          - type: 'null'
+          title: Recipient Email
+      type: object
+      title: GenerateReportPayload
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    IncidentAssignPayload:
+      properties:
+        assignee_id:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Assignee Id
+        user_id:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: User Id
+      type: object
+      title: IncidentAssignPayload
+    IncidentOut:
+      properties:
+        id:
+          type: string
+          title: Id
+        incident_code:
+          type: string
+          title: Incident Code
+        severity:
+          type: string
+          title: Severity
+        status:
+          type: string
+          title: Status
+        resolution:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Resolution
+        assigned_user_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Assigned User Id
+        assigned_to:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Assigned To
+        sla_deadline:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Sla Deadline
+        sla_overdue:
+          type: boolean
+          title: Sla Overdue
+          default: false
+        is_escalated:
+          type: boolean
+          title: Is Escalated
+        created_at:
+          type: string
+          title: Created At
+        resolved_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Resolved At
+        sender_email:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Sender Email
+        subject:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Subject
+        risk_score:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Risk Score
+      type: object
+      required:
+      - id
+      - incident_code
+      - severity
+      - status
+      - is_escalated
+      - created_at
+      title: IncidentOut
+    IncidentPage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/IncidentOut'
+          type: array
+          title: Items
+        total:
+          type: integer
+          title: Total
+        page:
+          type: integer
+          title: Page
+        page_size:
+          type: integer
+          title: Page Size
+      type: object
+      required:
+      - items
+      - total
+      - page
+      - page_size
+      title: IncidentPage
+    IncidentTransitionPayload:
+      properties:
+        new_status:
+          type: string
+          maxLength: 20
+          minLength: 2
+          title: New Status
+        resolution:
+          anyOf:
+          - type: string
+            maxLength: 40
+          - type: 'null'
+          title: Resolution
+        note:
+          anyOf:
+          - type: string
+            maxLength: 2000
+          - type: 'null'
+          title: Note
+        notes:
+          anyOf:
+          - type: string
+            maxLength: 2000
+          - type: 'null'
+          title: Notes
+      type: object
+      required:
+      - new_status
+      title: IncidentTransitionPayload
+    IocUpsertRequest:
+      properties:
+        ioc_type:
+          type: string
+          pattern: ^(DOMAIN|URL|IP|HASH|EMAIL)$
+          title: Ioc Type
+        ioc_value:
+          anyOf:
+          - type: string
+            maxLength: 500
+            minLength: 2
+          - type: 'null'
+          title: Ioc Value
+        value:
+          anyOf:
+          - type: string
+            maxLength: 500
+            minLength: 2
+          - type: 'null'
+          title: Value
+        list_type:
+          type: string
+          pattern: ^(BLACKLIST|WHITELIST)$
+          title: List Type
+          default: BLACKLIST
+        confidence_score:
+          anyOf:
+          - type: integer
+            maximum: 100.0
+            minimum: 0.0
+          - type: 'null'
+          title: Confidence Score
+        confidence:
+          anyOf:
+          - type: integer
+            maximum: 100.0
+            minimum: 0.0
+          - type: 'null'
+          title: Confidence
+        threat_level:
+          anyOf:
+          - type: string
+            pattern: ^(CRITICAL|HIGH|MEDIUM|LOW)$
+          - type: 'null'
+          title: Threat Level
+        ttl_days:
+          anyOf:
+          - type: integer
+            maximum: 3650.0
+            minimum: 1.0
+          - type: 'null'
+          title: Ttl Days
+        ttl_hours:
+          anyOf:
+          - type: integer
+            maximum: 87600.0
+            minimum: 1.0
+          - type: 'null'
+          title: Ttl Hours
+        source:
+          anyOf:
+          - type: string
+            maxLength: 100
+          - type: 'null'
+          title: Source
+        reason:
+          anyOf:
+          - type: string
+            maxLength: 100
+          - type: 'null'
+          title: Reason
+      type: object
+      required:
+      - ioc_type
+      title: IocUpsertRequest
+    LabelRequest:
+      properties:
+        label:
+          type: string
+          pattern: ^(TRUE_POSITIVE|FALSE_POSITIVE|UNREVIEWED)$
+          title: Label
+      type: object
+      required:
+      - label
+      title: LabelRequest
+    LoginRequest:
+      properties:
+        email:
+          type: string
+          maxLength: 255
+          minLength: 3
+          title: Email
+        password:
+          type: string
+          maxLength: 256
+          minLength: 1
+          title: Password
+        totp_code:
+          anyOf:
+          - type: string
+            maxLength: 12
+          - type: 'null'
+          title: Totp Code
+      type: object
+      required:
+      - email
+      - password
+      title: LoginRequest
+    ManualIncidentCreateRequest:
+      properties:
+        severity:
+          type: string
+          pattern: ^(LOW|MEDIUM|HIGH|CRITICAL)$
+          title: Severity
+          default: HIGH
+        subject:
+          type: string
+          maxLength: 500
+          minLength: 3
+          title: Subject
+        sender_email:
+          type: string
+          maxLength: 255
+          title: Sender Email
+          default: unknown@external.invalid
+        recipient_email:
+          type: string
+          maxLength: 255
+          title: Recipient Email
+          default: soc@bancocentral.com
+        summary:
+          type: string
+          maxLength: 1000
+          title: Summary
+          default: Manual SOC incident opened by analyst.
+        verdict_id:
+          anyOf:
+          - type: string
+            maxLength: 36
+          - type: 'null'
+          title: Verdict Id
+        ioc_ids:
+          items:
+            type: string
+          type: array
+          title: Ioc Ids
+        notes:
+          anyOf:
+          - type: string
+            maxLength: 2000
+          - type: 'null'
+          title: Notes
+        channel:
+          type: string
+          pattern: ^(EMAIL|SMS|WEB|QR)$
+          title: Channel
+          default: EMAIL
+        risk_score:
+          type: integer
+          maximum: 100.0
+          minimum: 0.0
+          title: Risk Score
+          default: 85
+      type: object
+      required:
+      - subject
+      title: ManualIncidentCreateRequest
+    MfaDisableRequest:
+      properties:
+        totp_code:
+          anyOf:
+          - type: string
+            maxLength: 12
+          - type: 'null'
+          title: Totp Code
+        password:
+          anyOf:
+          - type: string
+            maxLength: 256
+          - type: 'null'
+          title: Password
+      type: object
+      title: MfaDisableRequest
+    MfaVerifyRequest:
+      properties:
+        totp_code:
+          type: string
+          maxLength: 12
+          minLength: 6
+          title: Totp Code
+      type: object
+      required:
+      - totp_code
+      title: MfaVerifyRequest
+    NoteRequest:
+      properties:
+        note:
+          type: string
+          maxLength: 2000
+          minLength: 1
+          title: Note
+      type: object
+      required:
+      - note
+      title: NoteRequest
+    RefreshRequest:
+      properties:
+        refresh_token:
+          type: string
+          maxLength: 4000
+          minLength: 10
+          title: Refresh Token
+      type: object
+      required:
+      - refresh_token
+      title: RefreshRequest
+    ScheduleCreatePayload:
+      properties:
+        name:
+          type: string
+          maxLength: 200
+          minLength: 3
+          title: Name
+        report_format:
+          type: string
+          pattern: ^(pdf|docx|xlsx)$
+          title: Report Format
+          default: pdf
+        frequency:
+          type: string
+          pattern: ^(DAILY|WEEKLY)$
+          title: Frequency
+          default: DAILY
+        recipients:
+          items:
+            type: string
+          type: array
+          maxItems: 20
+          minItems: 1
+          title: Recipients
+        template:
+          type: string
+          pattern: ^(executive|management|operational|compliance)$
+          title: Template
+          default: management
+        window_days:
+          anyOf:
+          - type: integer
+            maximum: 365.0
+            minimum: 1.0
+          - type: 'null'
+          title: Window Days
+      type: object
+      required:
+      - name
+      - recipients
+      title: ScheduleCreatePayload
+    ScheduleOut:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        report_format:
+          type: string
+          title: Report Format
+        frequency:
+          type: string
+          title: Frequency
+        recipients:
+          items:
+            type: string
+          type: array
+          title: Recipients
+        template:
+          type: string
+          title: Template
+        is_active:
+          type: boolean
+          title: Is Active
+        next_run_at:
+          type: string
+          title: Next Run At
+        last_run_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last Run At
+        last_status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last Status
+      type: object
+      required:
+      - id
+      - name
+      - report_format
+      - frequency
+      - recipients
+      - template
+      - is_active
+      - next_run_at
+      title: ScheduleOut
+    SignalDto:
+      properties:
+        name:
+          type: string
+          title: Name
+        weight:
+          type: integer
+          title: Weight
+        score:
+          type: number
+          title: Score
+        reason:
+          type: string
+          title: Reason
+        metadata:
+          additionalProperties: true
+          type: object
+          title: Metadata
+      type: object
+      required:
+      - name
+      - weight
+      - score
+      - reason
+      title: SignalDto
+    SimulationEventCreateRequest:
+      properties:
+        employee_email:
+          type: string
+          maxLength: 255
+          minLength: 5
+          title: Employee Email
+        event_type:
+          type: string
+          pattern: ^(SENT|OPENED|CLICKED|REPORTED)$
+          title: Event Type
+        department:
+          type: string
+          maxLength: 120
+          title: Department
+          default: ''
+        metadata:
+          additionalProperties: true
+          type: object
+          title: Metadata
+      type: object
+      required:
+      - employee_email
+      - event_type
+      title: SimulationEventCreateRequest
+    TokenOut:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+        refresh_token:
+          type: string
+          title: Refresh Token
+        token_type:
+          type: string
+          title: Token Type
+          default: bearer
+        expires_in:
+          type: integer
+          title: Expires In
+          default: 1800
+        user:
+          $ref: '#/components/schemas/UserOut'
+        permissions:
+          items:
+            type: string
+          type: array
+          title: Permissions
+      type: object
+      required:
+      - access_token
+      - refresh_token
+      - user
+      - permissions
+      title: TokenOut
+    UrlAnalysisRequest:
+      properties:
+        url:
+          type: string
+          maxLength: 2048
+          minLength: 4
+          title: Url
+        channel:
+          type: string
+          pattern: ^(WEB|SMS|QR|EMAIL)$
+          title: Channel
+          default: WEB
+        sender:
+          anyOf:
+          - type: string
+            maxLength: 320
+          - type: 'null'
+          title: Sender
+        recipient:
+          anyOf:
+          - type: string
+            maxLength: 320
+          - type: 'null'
+          title: Recipient
+        message_text:
+          anyOf:
+          - type: string
+            maxLength: 20000
+          - type: 'null'
+          title: Message Text
+        enrich:
+          type: boolean
+          title: Enrich
+          default: true
+      type: object
+      required:
+      - url
+      title: UrlAnalysisRequest
+    UrlInvestigationRequest:
+      properties:
+        url:
+          type: string
+          maxLength: 2048
+          minLength: 4
+          title: Url
+        enable_network_tools:
+          type: boolean
+          title: Enable Network Tools
+          default: true
+      type: object
+      required:
+      - url
+      title: UrlInvestigationRequest
+    UserCreate:
+      properties:
+        email:
+          type: string
+          maxLength: 255
+          minLength: 5
+          pattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
+          title: Email
+        full_name:
+          type: string
+          maxLength: 255
+          minLength: 2
+          title: Full Name
+        role:
+          type: string
+          pattern: ^(ADMIN|SOC_L2|SOC_L1|AUDITOR|VIEWER)$
+          title: Role
+        password:
+          type: string
+          maxLength: 256
+          minLength: 1
+          title: Password
+      type: object
+      required:
+      - email
+      - full_name
+      - role
+      - password
+      title: UserCreate
+    UserOut:
+      properties:
+        id:
+          type: string
+          title: Id
+        email:
+          type: string
+          title: Email
+        full_name:
+          type: string
+          title: Full Name
+        role:
+          type: string
+          title: Role
+        is_active:
+          type: boolean
+          title: Is Active
+        mfa_enabled:
+          type: boolean
+          title: Mfa Enabled
+          default: false
+        locked:
+          type: boolean
+          title: Locked
+          default: false
+        failed_login_attempts:
+          type: integer
+          title: Failed Login Attempts
+          default: 0
+        locked_until:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Locked Until
+        last_login_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last Login At
+        created_at:
+          type: string
+          title: Created At
+        permissions:
+          items:
+            type: string
+          type: array
+          title: Permissions
+      type: object
+      required:
+      - id
+      - email
+      - full_name
+      - role
+      - is_active
+      - created_at
+      title: UserOut
+    UserUpdate:
+      properties:
+        full_name:
+          anyOf:
+          - type: string
+            maxLength: 255
+            minLength: 2
+          - type: 'null'
+          title: Full Name
+        role:
+          anyOf:
+          - type: string
+            pattern: ^(ADMIN|SOC_L2|SOC_L1|AUDITOR|VIEWER)$
+          - type: 'null'
+          title: Role
+        is_active:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Is Active
+        unlock:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Unlock
+        new_password:
+          anyOf:
+          - type: string
+            maxLength: 256
+          - type: 'null'
+          title: New Password
+      type: object
+      title: UserUpdate
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    VerdictOut:
+      properties:
+        id:
+          type: string
+          title: Id
+        correlation_id:
+          type: string
+          title: Correlation Id
+        sender_email:
+          type: string
+          title: Sender Email
+        sender_domain:
+          type: string
+          title: Sender Domain
+          default: ''
+        recipient_email:
+          type: string
+          title: Recipient Email
+        subject:
+          type: string
+          title: Subject
+        channel:
+          type: string
+          title: Channel
+        risk_score:
+          type: integer
+          title: Risk Score
+        verdict:
+          type: string
+          title: Verdict
+        action_taken:
+          type: string
+          title: Action Taken
+        summary:
+          type: string
+          title: Summary
+        latency_ms:
+          type: integer
+          title: Latency Ms
+        analyst_label:
+          type: string
+          title: Analyst Label
+        headers_meta:
+          additionalProperties: true
+          type: object
+          title: Headers Meta
+        signals_meta:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Signals Meta
+        incident_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Incident Id
+        incident_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Incident Code
+        created_at:
+          type: string
+          title: Created At
+      type: object
+      required:
+      - id
+      - correlation_id
+      - sender_email
+      - recipient_email
+      - subject
+      - channel
+      - risk_score
+      - verdict
+      - action_taken
+      - summary
+      - latency_ms
+      - analyst_label
+      - signals_meta
+      - created_at
+      title: VerdictOut
+    VerdictPage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/VerdictOut'
+          type: array
+          title: Items
+        total:
+          type: integer
+          title: Total
+        page:
+          type: integer
+          title: Page
+        page_size:
+          type: integer
+          title: Page Size
+      type: object
+      required:
+      - items
+      - total
+      - page
+      - page_size
+      title: VerdictPage
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer

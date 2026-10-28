@@ -1,0 +1,1 @@
+"""AbuseIPDB threat feed adapter."""

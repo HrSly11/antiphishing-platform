@@ -1,0 +1,1 @@
+Classify the provided email body into Legitimate, Suspicious, or Phishing.

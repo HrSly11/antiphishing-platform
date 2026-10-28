@@ -1,0 +1,100 @@
+{
+  "name": "etl_phishing_dataset",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC",
+    "saveManualExecutions": true
+  },
+  "nodes": [
+    {
+      "id": "etl-schedule-01",
+      "name": "Every 6 Hours Cron",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 300],
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 6 }]
+        }
+      }
+    },
+    {
+      "id": "etl-ingest-openphish-02",
+      "name": "Trigger OpenPhish & PhishTank ETL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "http://antiphishing-backend:8000/api/v1/dataset/ingest",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Service-Key", "value": "={{ $env.N8N_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"source\": \"openphish\",\n  \"prefer_live\": true,\n  \"sync_blacklist\": true\n}"
+      }
+    },
+    {
+      "id": "etl-check-status-03",
+      "name": "Check Ingestion Status",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [780, 300],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.status }}",
+              "operation": "equals",
+              "value2": "COMPLETED"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "etl-audit-summary-04",
+      "name": "Format SHA256 Version Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 220],
+      "parameters": {
+        "jsCode": "const v = $input.first().json;\nreturn [{ json: { summary: `ETL completed: source=${v.source} sha256=${v.sha256} new=${v.new_records} dup=${v.duplicate_records}` } }];"
+      }
+    },
+    {
+      "id": "etl-failure-alert-05",
+      "name": "Alert SOC on ETL Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1040, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SOC_CHATOPS_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"text\": \"[HIGH] Threat Feed ETL Failure - verify docs/runbooks/etl-failure.md\"\n}"
+      }
+    }
+  ],
+  "connections": {
+    "Every 6 Hours Cron": {
+      "main": [[{ "node": "Trigger OpenPhish & PhishTank ETL", "type": "main", "index": 0 }]]
+    },
+    "Trigger OpenPhish & PhishTank ETL": {
+      "main": [[{ "node": "Check Ingestion Status", "type": "main", "index": 0 }]]
+    },
+    "Check Ingestion Status": {
+      "main": [
+        [{ "node": "Format SHA256 Version Summary", "type": "main", "index": 0 }],
+        [{ "node": "Alert SOC on ETL Failure", "type": "main", "index": 0 }]
+      ]
+    }
+  }
+}

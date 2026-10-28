@@ -1,0 +1,70 @@
+graph TD
+    subgraph Canales ["Fuentes de Entrada en Tiempo Real"]
+        MTA["MTA Corporativo / Office 365 Webhook"]
+        ExtAddin["Outlook Add-in (Botón Reportar)"]
+        SOCWeb["Portal SOC / Web App (React)"]
+        FeedsExt["Feeds Externos (PhishTank/OpenPhish)"]
+    end
+
+    subgraph Edge ["Capa de Entrada y Perímetro"]
+        NGINX["Ingress / Reverse Proxy"]
+        RateLimiter["Rate Limiter (Redis Token Bucket)"]
+        AuthFilter["Auth Guard (JWT / OAuth2 / SSO LDAP)"]
+    end
+
+    subgraph CoreBackend ["Backend Modular (FastAPI + Hexagonal Core)"]
+        API["Capa API REST (Routers v1)"]
+        
+        subgraph AppLayer ["Capa de Aplicación (CQRS)"]
+            CommandBus["Command Bus (Write)"]
+            QueryBus["Query Bus (Read)"]
+            MailPipeline["Real-time Mail Pipeline Orchestrator"]
+        end
+        
+        subgraph DomainCore ["Núcleo de Dominio Puro (Sin dependencias)"]
+            DomainDetection["Dominio Detección (Heurísticas, Entropía, Scoring)"]
+            DomainIncident["Dominio Incidentes (SLA, Máquina de Estados)"]
+            DomainIAM["Dominio IAM & RBAC"]
+            DomainIOC["Dominio IOC & Blacklists"]
+        end
+        
+        subgraph Adapters ["Adaptadores Secundarios (Infraestructura)"]
+            RepoAdapter["SQLAlchemy 2.0 Async Repositories"]
+            RedisCache["Redis (Cache KPIs, Blacklists, Rate-Limit)"]
+            LLMAdapter["LangChain Adapter (Ollama / Azure OpenAI)"]
+            FeedAdapter["Threat Feeds Ingestion Workers"]
+            NotificationAdapter["Notification Adapter (SMTP, Slack, Teams)"]
+            N8nAdapter["n8n Webhook Client (HMAC Signed)"]
+        end
+    end
+
+    subgraph DataStorage ["Persistencia y Almacenamiento"]
+        Postgres[("PostgreSQL 16 + pgvector + pg_trgm")]
+        MinIO[("MinIO Object Storage - EMLs y Adjuntos")]
+    end
+
+    subgraph Automation ["Automatización y Orquestación"]
+        N8N["n8n Engine (Workflows SOAR)"]
+    end
+
+    MTA -->|Stream EML / Hook HTTP| NGINX
+    ExtAddin -->|Reporte Usuario| NGINX
+    SOCWeb -->|Operación Analista| NGINX
+    FeedsExt -->|Cron ETL| FeedAdapter
+
+    NGINX --> RateLimiter --> AuthFilter --> API
+    API --> MailPipeline
+    API --> CommandBus
+    API --> QueryBus
+
+    MailPipeline --> DomainDetection
+    MailPipeline --> LLMAdapter
+    CommandBus --> DomainIncident
+    CommandBus --> DomainIOC
+
+    DomainDetection --> RepoAdapter
+    DomainIncident --> N8nAdapter
+    RepoAdapter --> Postgres
+    N8nAdapter --> N8N
+    N8N --> NotificationAdapter
+    AppLayer --> MinIO

@@ -1,0 +1,80 @@
+erDiagram
+    USERS ||--o{ USER_ROLES : has
+    ROLES ||--o{ USER_ROLES : assigned_to
+    ROLES ||--o{ ROLE_PERMISSIONS : grants
+    PERMISSIONS ||--o{ ROLE_PERMISSIONS : contained_in
+
+    USERS ||--o{ INCIDENTS : assigned_to
+    INCIDENTS ||--o{ INCIDENT_EVENTS : logs
+    INCIDENTS ||--o{ INCIDENT_IOCS : associates
+    IOCS ||--o{ INCIDENT_IOCS : belongs_to
+
+    DETECTION_VERDICTS ||--o{ INCIDENTS : triggers
+    DETECTION_VERDICTS ||--o{ VERDICT_INDICATORS : details
+
+    DATASET_VERSIONS ||--o{ PHISHING_SAMPLES : contains
+
+    USERS {
+        uuid id PK
+        varchar email UK
+        varchar hashed_password
+        varchar full_name
+        boolean is_active
+        boolean mfa_enabled
+        varchar mfa_secret
+        int failed_login_attempts
+        timestamp locked_until
+        timestamp created_at
+    }
+
+    DETECTION_VERDICTS {
+        uuid id PK
+        varchar correlation_id UK
+        varchar sender_email
+        varchar recipient_email
+        varchar subject
+        varchar channel
+        int risk_score
+        varchar verdict
+        varchar action_taken
+        jsonb headers_meta
+        jsonb heuristics_meta
+        uuid created_by
+        timestamp created_at
+    }
+
+    INCIDENTS {
+        uuid id PK
+        varchar incident_code UK
+        uuid verdict_id FK
+        varchar severity
+        varchar status
+        uuid assigned_user_id FK
+        timestamp sla_deadline
+        boolean is_escalated
+        timestamp resolved_at
+        timestamp created_at
+    }
+
+    IOCS {
+        uuid id PK
+        varchar ioc_type
+        varchar ioc_value
+        int confidence_score
+        varchar source
+        boolean is_active
+        timestamp expires_at
+        timestamp created_at
+    }
+
+    AUDIT_LOGS {
+        bigserial id PK
+        timestamp event_timestamp
+        varchar user_email
+        varchar client_ip
+        varchar action
+        varchar resource
+        jsonb payload_before
+        jsonb payload_after
+        varchar integrity_hash
+    }

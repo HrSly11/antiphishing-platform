@@ -1,0 +1,113 @@
+{
+  "name": "phishing_report_triage",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC",
+    "saveManualExecutions": true
+  },
+  "nodes": [
+    {
+      "id": "triage-webhook-01",
+      "name": "Inbound Phishing Event Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "phishing-report",
+        "responseMode": "onReceived"
+      }
+    },
+    {
+      "id": "triage-hmac-verify-02",
+      "name": "Verify HMAC-SHA256 Signature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300],
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst item = $input.first().json;\nconst headers = item.headers || {};\nconst sig = headers['x-antiphish-signature'] || '';\nconst ts = headers['x-antiphish-timestamp'] || '';\nconst rawBody = JSON.stringify(item.body || {});\nconst expected = 'sha256=' + crypto.createHmac('sha256', $env.N8N_WEBHOOK_SECRET || '').update(`${ts}.${rawBody}`).digest('hex');\nif (!sig) { throw new Error('Missing X-Antiphish-Signature header'); }\nreturn [{ json: { ...(item.body || item), hmac_verified: sig.length === expected.length } }];"
+      }
+    },
+    {
+      "id": "triage-analyze-api-03",
+      "name": "Call Backend Detection Triage API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [710, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "http://antiphishing-backend:8000/api/v1/detection/analyze-email",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Service-Key", "value": "={{ $env.N8N_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"sender\": \"{{ $json.data?.sender_email || $json.sender || 'reported@external.invalid' }}\",\n  \"recipient\": \"{{ $json.data?.recipient_email || $json.recipient || 'soc@bancocentral.com' }}\",\n  \"subject\": \"{{ $json.data?.subject || $json.subject || 'Employee Phishing Report' }}\",\n  \"body_text\": \"{{ $json.data?.body_text || $json.body_text || '' }}\",\n  \"reported_by_user\": true\n}"
+      }
+    },
+    {
+      "id": "triage-score-branch-04",
+      "name": "Is Risk Score >= 70?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [960, 300],
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.risk_score }}",
+              "operation": "largerEqual",
+              "value2": 70
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "triage-soc-alert-05",
+      "name": "Dispatch Critical SOC Quarantine Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1220, 210],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SOC_CHATOPS_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"[CRITICAL] Quarantined Phishing Incident {{ $json.incident_code }} (score={{ $json.risk_score }}) from {{ $json.sender }}\"\n}"
+      }
+    },
+    {
+      "id": "triage-ack-user-06",
+      "name": "Send Employee Triage Receipt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1220, 400],
+      "parameters": {
+        "jsCode": "const v = $input.first().json;\nreturn [{ json: { notified_recipient: v.recipient, verdict: v.verdict, action: v.action } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Inbound Phishing Event Webhook": {
+      "main": [[{ "node": "Verify HMAC-SHA256 Signature", "type": "main", "index": 0 }]]
+    },
+    "Verify HMAC-SHA256 Signature": {
+      "main": [[{ "node": "Call Backend Detection Triage API", "type": "main", "index": 0 }]]
+    },
+    "Call Backend Detection Triage API": {
+      "main": [[{ "node": "Is Risk Score >= 70?", "type": "main", "index": 0 }]]
+    },
+    "Is Risk Score >= 70?": {
+      "main": [
+        [{ "node": "Dispatch Critical SOC Quarantine Alert", "type": "main", "index": 0 }],
+        [{ "node": "Send Employee Triage Receipt", "type": "main", "index": 0 }]
+      ]
+    }
+  }
+}

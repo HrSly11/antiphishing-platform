@@ -1,0 +1,91 @@
+{
+  "name": "daily_report",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC",
+    "saveManualExecutions": true
+  },
+  "nodes": [
+    {
+      "id": "report-cron-01",
+      "name": "Daily 07:00 UTC Executive Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 300],
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 7 * * *" }]
+        }
+      }
+    },
+    {
+      "id": "report-fetch-kpis-02",
+      "name": "Fetch 24h Dashboard KPIs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "http://antiphishing-backend:8000/api/v1/dashboard/kpis?window_days=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Service-Key", "value": "={{ $env.N8N_SERVICE_KEY }}" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "report-generate-pdf-03",
+      "name": "Generate Executive PDF Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "http://antiphishing-backend:8000/api/v1/reports/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Service-Key", "value": "={{ $env.N8N_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"report_format\": \"pdf\",\n  \"template\": \"management\"\n}",
+        "options": {
+          "response": { "response": { "responseFormat": "file" } }
+        }
+      }
+    },
+    {
+      "id": "report-send-email-04",
+      "name": "Email CISO & Compliance Distribution",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1030, 300],
+      "parameters": {
+        "fromEmail": "antiphishing@bancocentral.com",
+        "toEmail": "ciso@bancocentral.com,auditoria@bancocentral.com",
+        "subject": "Daily Banking SOC Antiphishing Executive Report",
+        "text": "Attached is the automated daily CISO antiphishing telemetry and SLA compliance PDF report.",
+        "options": {
+          "attachments": "data"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily 07:00 UTC Executive Schedule": {
+      "main": [[{ "node": "Fetch 24h Dashboard KPIs", "type": "main", "index": 0 }]]
+    },
+    "Fetch 24h Dashboard KPIs": {
+      "main": [[{ "node": "Generate Executive PDF Report", "type": "main", "index": 0 }]]
+    },
+    "Generate Executive PDF Report": {
+      "main": [[{ "node": "Email CISO & Compliance Distribution", "type": "main", "index": 0 }]]
+    }
+  }
+}

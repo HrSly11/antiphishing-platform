@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: antiphishing-redis
+  namespace: antiphishing-soc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: antiphishing-redis
+  template:
+    metadata:
+      labels:
+        app: antiphishing-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: antiphishing-redis
+  namespace: antiphishing-soc
+spec:
+  selector:
+    app: antiphishing-redis
+  ports:
+    - port: 6379
+      targetPort: 6379

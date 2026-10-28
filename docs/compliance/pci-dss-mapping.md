@@ -1,0 +1,18 @@
+# PCI-DSS v4.0 Control Mapping — Banking Antiphishing Platform
+
+## 1. Scope
+This document maps Payment Card Industry Data Security Standard (**PCI-DSS v4.0**) requirements to concrete technical controls implemented in the **BancoCentral Antiphishing Platform**, supporting internal QSA assessments and continuous compliance (`GET /api/v1/audit/compliance`).
+
+---
+
+## 2. Requirement-to-Implementation Matrix
+
+| PCI-DSS v4.0 Req | Requirement Summary | Platform Technical Implementation | Verification Endpoint / Artifact |
+| :--- | :--- | :--- | :--- |
+| **Req 5.4.1** | Processes and automated mechanisms are in place to detect and protect personnel against phishing attacks. | Multi-layer inline inspection (`EMAIL`, `SMS`, `WEB`, `QR`) combining SPF/DKIM/DMARC alignment, Unicode Punycode homograph detection, Levenshtein brand typosquatting, deceptive HTML anchor checks, IOC `BLACKLIST`/`WHITELIST` precedence, and LangChain semantic intent analysis. | `POST /api/v1/detection/analyze-email`, `app/domain/detection/engine.py` |
+| **Req 6.2.4 & 6.4.1** | Software engineering techniques prevent common vulnerabilities (injection, XSS, SSRF, broken auth). | Parameterized SQLAlchemy 2.0 queries, escaped `ILIKE` patterns, strict Pydantic v2 DTO bounds, `SecurityHeadersMiddleware` (`CSP`, `HSTS`, `X-Frame-Options: DENY`), SSRF private-IP blocks on feed/enrichment clients, and XML prompt-injection sanitization. | `app/api/middleware/security_headers.py`, `app/adapters/feeds/whois_dns_tls.py` |
+| **Req 7.2.1 & 7.2.2** | Access to system components is assigned based on job classification and least privilege. | Five granular RBAC roles (`ADMIN`, `SOC_L2`, `SOC_L1`, `AUDITOR`, `VIEWER`) mapped to 15 explicit `resource:action` permissions enforced via `require_permission()` dependencies and PostgreSQL `ck_users_role_valid` constraints. | `GET /api/v1/users/roles`, `app/domain/iam/rbac.py` |
+| **Req 8.3.1 - 8.3.6** | Strong cryptography for authentication, password complexity (>= 12 chars), and account lockout. | Argon2id password hashing (`argon2-cffi`), mandatory 12-character policy (upper, lower, digit, symbol, common-password denylist), automatic 15-minute lockout after 5 failed attempts (`HTTP 423`), and RFC 6238 TOTP MFA (`setup`/`enable`/`verify`). | `POST /api/v1/auth/login`, `POST /api/v1/auth/mfa/enable`, `app/domain/iam/password_policy.py` |
+| **Req 10.2 & 10.3** | Audit logs capture all security events and are protected from destruction and unauthorized modification. | Append-only `audit_logs` protected by PostgreSQL triggers (`trg_audit_logs_no_update_delete`, `trg_audit_logs_no_truncate`), serialized via `pg_advisory_xact_lock`, and linked via SHA-256 `prev_hash -> integrity_hash` cryptographic chaining. | `GET /api/v1/audit/verify-chain`, `alembic/versions/0005_audit_append_only.py` |
+| **Req 12.6.2 & 12.6.3** | Periodic security awareness training including social-engineering simulations. | Built-in phishing simulation module tracking `SENT`, `OPENED`, `CLICKED`, and `REPORTED` employee interactions by department (`click_rate`, `report_rate`, `compromise_risk`) plus one-click `"Reportar phishing"` intake. | `GET /api/v1/simulation/metrics`, `POST /api/v1/detection/report-phishing` |
+| **Req 12.10.1 & 12.10.5** | 24/7 security incident response plan, SLA monitoring, and automated SOAR alerting. | Automated incident generation (`risk_score >= 70`), 15-minute `CRITICAL` SLA tracking, background `sla_worker` escalation, HMAC-SHA256 signed n8n webhooks, and executive PDF/DOCX/XLSX audit reports. | `POST /api/v1/incidents/escalate-overdue`, `backend/n8n/workflows/` |

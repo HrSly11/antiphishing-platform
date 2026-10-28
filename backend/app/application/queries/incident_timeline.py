@@ -1,0 +1,1 @@
+"""Incident timeline query handler."""

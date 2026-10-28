@@ -1,0 +1,1 @@
+export const FpFnGauge = () => <div />;

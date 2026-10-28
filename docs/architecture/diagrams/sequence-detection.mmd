@@ -1,0 +1,41 @@
+sequenceDiagram
+    autonumber
+    participant MTA as Servidor de Correo (MTA / SEG)
+    participant API as API Detección (/detection/analyze-email)
+    participant Cache as Redis (Listas / IOCs / Reputación)
+    participant Engine as Motor Heurístico & Homógrafo
+    participant LLM as LangChain (Triage / Agent)
+    participant DB as PostgreSQL 16 (Auditoría & Veredictos)
+    participant N8N as n8n SOAR Engine
+    participant SOC as Canal SOC (Teams / Slack)
+
+    MTA->>API: POST /api/v1/detection/analyze-email (Raw MIME / Headers / Body)
+    Note over API: Extracción de SPF, DKIM, DMARC, IPs, Enlaces y Adjuntos
+    
+    API->>Cache: 1. Consultar Whitelist corporativa & Blacklist activa
+    alt En Whitelist Corporativa Estricta
+        Cache-->>API: Hit: Remitente verificado legítimo
+        API-->>MTA: 200 OK - Verdict: CLEAN (Score 0) -> Entregar
+    else En Blacklist de IOCs o Dominio Malicioso
+        Cache-->>API: Hit: IOC Malicioso confirmado
+        API->>DB: Registrar Veredicto PHISHING (Score 100)
+        API-->>MTA: 200 OK - Verdict: QUARANTINE (Score 100) -> Aislar
+        API->>N8N: Disparar evento de contención inmediata
+        N8N->>SOC: Alerta crítica a analistas de guardia
+    else Requiere Análisis Profundo
+        API->>Engine: 2. Ejecutar Heurísticas (Entropía, Homógrafos Punycode, Typosquatting)
+        Engine-->>API: Señales calculadas (Score parcial: 55)
+        
+        API->>LLM: 3. Evaluación de Intención & Urgencia (Few-Shot Prompting)
+        LLM-->>API: Sospecha alta: Suplantación de identidad bancaria (Confidence 0.92)
+        
+        Note over API: Algoritmo de Scoring Ponderado consolida Score = 88/100
+        API->>DB: Persistir Veredicto, Indicadores e IncidentTicket
+        API->>N8N: Trigger Webhook: Incidente Crítico (HMAC)
+        par Notificación Asíncrona
+            N8N->>SOC: Mensaje estructurado con botón de bloqueo 1-click
+            N8N->>DB: Escalamiento de SLA automático (Timer 15 min)
+        and Respuesta a MTA
+            API-->>MailServer: 200 OK - Action: QUARANTINE (Score: 88, Threat: Homograph/Impersonation)
+        end
+    end

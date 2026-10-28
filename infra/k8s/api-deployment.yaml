@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: antiphishing-api
+  namespace: antiphishing-soc
+  labels:
+    app: antiphishing-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: antiphishing-api
+  template:
+    metadata:
+      labels:
+        app: antiphishing-api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8000"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: api
+          image: antiphishing-backend:2.0.0
+          ports:
+            - containerPort: 8000
+              name: http
+          envFrom:
+            - secretRef:
+                name: antiphishing-api-secrets
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1500m"
+              memory: "1Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: antiphishing-backend
+  namespace: antiphishing-soc
+spec:
+  selector:
+    app: antiphishing-api
+  ports:
+    - port: 8000
+      targetPort: 8000
+      name: http

@@ -1,0 +1,102 @@
+{
+  "name": "sla_escalation",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC",
+    "saveManualExecutions": true
+  },
+  "nodes": [
+    {
+      "id": "sla-cron-01",
+      "name": "Every 5 Minutes SLA Sweep",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 220],
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 5 }]
+        }
+      }
+    },
+    {
+      "id": "sla-webhook-02",
+      "name": "Inbound SLA Breach Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 400],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "incident-escalated",
+        "responseMode": "onReceived"
+      }
+    },
+    {
+      "id": "sla-call-escalate-03",
+      "name": "Trigger Backend Overdue Escalation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "http://antiphishing-backend:8000/api/v1/incidents/escalate-overdue",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Service-Key", "value": "={{ $env.N8N_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "sla-has-breaches-04",
+      "name": "Any Overdue Incidents Escalated?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [780, 300],
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.escalated_count || 0 }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "sla-page-soc-l2-05",
+      "name": "Page SOC L2 & CISO Duty Channel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1060, 220],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SOC_CHATOPS_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"[SLA BREACH] {{ $json.escalated_count }} banking phishing incident(s) exceeded response SLA and were escalated to SOC L2.\"\n}"
+      }
+    }
+  ],
+  "connections": {
+    "Every 5 Minutes SLA Sweep": {
+      "main": [[{ "node": "Trigger Backend Overdue Escalation", "type": "main", "index": 0 }]]
+    },
+    "Inbound SLA Breach Webhook": {
+      "main": [[{ "node": "Trigger Backend Overdue Escalation", "type": "main", "index": 0 }]]
+    },
+    "Trigger Backend Overdue Escalation": {
+      "main": [[{ "node": "Any Overdue Incidents Escalated?", "type": "main", "index": 0 }]]
+    },
+    "Any Overdue Incidents Escalated?": {
+      "main": [
+        [{ "node": "Page SOC L2 & CISO Duty Channel", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  }
+}

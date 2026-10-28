@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: antiphishing-worker
+  namespace: antiphishing-soc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: antiphishing-worker
+  template:
+    metadata:
+      labels:
+        app: antiphishing-worker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: sla-outbox-worker
+          image: antiphishing-backend:2.0.0
+          command:
+            - python
+            - -c
+            - |
+              import asyncio
+              from app.workers.sla_worker import run_sla_sweep
+              from app.workers.report_worker import run_due_report_schedules
+              async def loop():
+                  while True:
+                      await run_sla_sweep(drain_outbox=True)
+                      await run_due_report_schedules()
+                      await asyncio.sleep(60)
+              asyncio.run(loop())
+          envFrom:
+            - secretRef:
+                name: antiphishing-api-secrets
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
